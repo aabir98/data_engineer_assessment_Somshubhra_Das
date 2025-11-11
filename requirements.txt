@@ -1,0 +1,6 @@
+mysql-connector-python
+pandas
+openpyxl
+python-dotenv
+python-dateutil
+pydantic

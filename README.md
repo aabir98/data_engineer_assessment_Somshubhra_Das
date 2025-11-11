@@ -80,5 +80,92 @@ For MySQL Docker image reference:
 **Good luck! We look forward to your submission.**
 
 ## Solutions and Instructions (Filed by Candidate)
+1. Start Docker
+
+Ensure Docker Desktop is running, then start the MySQL service:
+
+docker compose -f docker-compose.initial.yml up --build -d
+
+2. Create and activate virtual environment
+python -m venv .venv
+.venv\Scripts\activate
+
+3️. Install dependencies
+pip install -r requirements.txt
+
+requirements.txt is a file in the root containing
+
+mysql-connector-python
+pandas
+openpyxl
+python-dotenv
+python-dateutil
+pydantic
+
+4. Verify MySQL connection
+python src\test_db.py
+
+5. Create the database schema
+python src\generate_schema_sql.py
+
+This script creates normalized tables:
+
+property
+
+leads
+
+valuation
+
+hoa
+
+rehab
+
+taxes
+
+SQL DDL is also saved as schema.sql for documentation.
+
+6️. Run the ETL pipeline
+python src\etl.py
+
+Expected output:
+
+connected to MySQL DB
+reading data from data\fake_property_data_new.json
+found N property records
+etl complete
+
+
+This loads all property data into the normalized MySQL schema.
+
+7. Verify loaded data
+docker exec -it mysql_ctn mysql -udb_user -p6equj5_db_user home_db -e "SHOW TABLES;"
+docker exec -it mysql_ctn mysql -udb_user -p6equj5_db_user home_db -e "SELECT COUNT(*) FROM property;"
+docker exec -it mysql_ctn mysql -udb_user -p6equj5_db_user home_db -e "SELECT * FROM valuation LIMIT 5;"
 
 **Document your solution here:**
+property (1) ───< leads
+        │
+        ├──< valuation
+        ├──< hoa
+        ├──< rehab
+        └──< taxes
+Each property can have multiple leads, valuations, rehab estimates, taxes, or HOA entries.
+
+                             property
+  ┌─────────────────────────────────────────────────────────────────┐
+  │ PK property_id                                                   │
+  │    property_title, address, city, state, zip, tax_rate, ...      │
+  └─────────────────────────────────────────────────────────────────┘
+                │1
+                │
+                ▼
+  ┌──────────────────┬──────────────────┬──────────────┬──────────────┬──────────────┐
+  │      leads       │    valuation     │     hoa      │     rehab     │    taxes     │
+  │──────────────────│──────────────────│──────────────│───────────────│──────────────│
+  │ PK lead_id       │ PK valuation_id  │ PK hoa_id    │ PK rehab_id   │ PK tax_id    │
+  │ FK property_id ◂─┤ FK property_id ◂─┤ FK property_id◂┤ FK property_id◂┤ FK property_id◂┤
+  │ reviewed_status  │ list_price       │ hoa          │ underwriting_  │ taxes        │
+  │ ...              │ previous_rent    │ hoa_flag     │ rehab, flags   │              │
+  └──────────────────┴──────────────────┴──────────────┴───────────────┴──────────────┘
+
+Cardinality: property (1) ───< child_table (many)   (i.e., 1 -> N)
